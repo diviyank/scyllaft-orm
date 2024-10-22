@@ -4,14 +4,19 @@ from __future__ import annotations
 
 import inspect
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, ForwardRef, List, Optional, Tuple, Type
 
 from loguru import logger
-from pydantic import validate_call
+from pydantic import ConfigDict, validate_call
 from scyllaft import Scylla
 
 from .column import AggregateExpr, Column, ColumnExpr
 from .table import Table
+
+Select = ForwardRef("Select")  # type:ignore
+Insert = ForwardRef("Insert")  # type:ignore
+Update = ForwardRef("Update")  # type:ignore
+Delete = ForwardRef("Delete")  # type:ignore
 
 
 class Query(ABC):
@@ -59,7 +64,7 @@ class Query(ABC):
 class Select(Query):
     """Select query from Scylla."""
 
-    @validate_call
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(self, *columns: Column | AggregateExpr | Type[Table]) -> None:
         """Initializes the Select query.
 
@@ -223,7 +228,7 @@ class Select(Query):
 class Update(Query):
     """Update query."""
 
-    @validate_call
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(self, table: Type[Table]):
         """Initializes the Update query.
 
@@ -292,12 +297,16 @@ class Update(Query):
         if not self._set_values:
             raise ValueError("No SET in update query!")
 
-        set_values = ", ".join(
-            [f"{k._name} = {v}" for k, v in self._set_values.items()]
-        )
+        set_keys, parameters = [], []
+
+        for key, value in self._set_values.items():
+
+            set_keys.append(f"{key._name} = ?")
+            parameters.append(value)
+
+        set_values = ", ".join(set_keys)
         query = f"UPDATE {self._keyspace}.{self._table.__tablename__} SET {set_values}"
 
-        parameters = []
         if self._where:
             predicates = []
             for predicate in self._where:
@@ -310,7 +319,7 @@ class Update(Query):
 class Delete(Query):
     """Delete query."""
 
-    @validate_call
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(self, table: Type[Table]):
         """Initializes the Delete query.
 
@@ -387,7 +396,7 @@ class Insert(Query):
     Suboptimal way to insert, as the "best way" is to batch insert using directly `scyllaft`.
     """
 
-    @validate_call
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(self, table: Type[Table]):
         """Initializes the Insert query.
 
@@ -400,7 +409,7 @@ class Insert(Query):
         self._keyspace = table.__keyspace__
         self._values: List[Table] = []
 
-    @validate_call
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def values(self, *values: Table) -> Insert:
         """Specifies the values to be inserted.
 

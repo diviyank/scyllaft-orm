@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional
+from typing import Any, ForwardRef, Iterable, Optional
 
 from pydantic import validate_call
 from pydantic.dataclasses import dataclass
 
 from .types import ScyllaType
+
+AggregateExpr = ForwardRef("AggregateExpr")  # type:ignore
+Column = ForwardRef("Column")  # type:ignore
 
 
 @dataclass
