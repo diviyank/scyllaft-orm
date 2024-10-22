@@ -7,6 +7,7 @@ from .metaclass import ApplicationEnvironment
 from .metadata import MetaData
 from .query import Delete, Insert, Query, Select, Update
 from .table import Table
+from .types import ScyllaType
 
 # NOTE: This might be heavy on startup time
 app_env = os.environ.get("APPLICATION_ENV")
@@ -24,4 +25,7 @@ __all__ = [
     "Update",
     "Insert",
     "Delete",
+    "ScyllaType",
 ]
+
+__version__ = "0.1.0"

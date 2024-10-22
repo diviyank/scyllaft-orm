@@ -6,9 +6,8 @@ from copy import deepcopy
 from enum import Enum
 from typing import Dict, List, Type
 
-from scyllaft_orm.column import Column
-from scyllaft_orm.metaclass import ScyllaMetaClass
-
+from .column import Column
+from .metaclass import ScyllaMetaClass
 from .types import SCYLLA_TO_REDIS_MAP
 
 

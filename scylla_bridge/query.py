@@ -18,25 +18,56 @@ class Query(ABC):
     """Generic query expression."""
 
     async def execute(self, scylla_instance: Scylla) -> Any:
+        """Executes the query using a Scylla instance.
+
+        Parameters
+        ----------
+        scylla_instance : Scylla
+            The Scylla instance used to execute the query.
+
+        Returns
+        -------
+        Any
+            The result of the executed query.
+        """
         query, parameters = self.build_query()
         result = await scylla_instance.execute(query, parameters)
         return result
 
     @abstractmethod
     def build_query(self) -> Tuple[str, List[Any]]:
-        """Builds the query into a str and its parameters as a list."""
+        """Builds the query into a string and its parameters as a list.
+
+        Returns
+        -------
+        Tuple[str, List[Any]]
+            The query string and the corresponding parameters.
+        """
         raise NotImplementedError
 
     def __str__(self):
-        """For printing purposes."""
+        """Returns the query string for printing purposes.
+
+        Returns
+        -------
+        str
+            The query string.
+        """
         return self.build_query()[0]
 
 
 class Select(Query):
-    """Select query from scylla."""
+    """Select query from Scylla."""
 
     @validate_call
     def __init__(self, *columns: Column | AggregateExpr | Type[Table]) -> None:
+        """Initializes the Select query.
+
+        Parameters
+        ----------
+        *columns : Column or AggregateExpr or Type[Table]
+            The columns to be selected in the query.
+        """
         assert len(columns) > 0, "Select expression cannot be empty!"
 
         if inspect.isclass(columns[0]) and issubclass(columns[0], Table):
@@ -73,6 +104,13 @@ class Select(Query):
         self._group_by: Optional[str] = None
 
     def allow_filtering(self) -> Select:
+        """Enables the 'ALLOW FILTERING' option in the query.
+
+        Returns
+        -------
+        Select
+            The updated Select query with 'ALLOW FILTERING' enabled.
+        """
         logger.warning(
             "Allow filtering usually leads to degraded performance. Consider reviewing your query."
         )
@@ -81,6 +119,18 @@ class Select(Query):
 
     @validate_call
     def where(self, *predicates: ColumnExpr) -> Select:
+        """Adds WHERE conditions to the query.
+
+        Parameters
+        ----------
+        *predicates : ColumnExpr
+            The column expressions to be used in the WHERE clause.
+
+        Returns
+        -------
+        Select
+            The updated Select query with WHERE conditions.
+        """
         assert len(predicates) > 0, "where condition cannot be empty!"
         assert all(
             [
@@ -94,6 +144,18 @@ class Select(Query):
 
     @validate_call
     def group_by(self, *columns: Column) -> Select:
+        """Adds GROUP BY conditions to the query.
+
+        Parameters
+        ----------
+        *columns : Column
+            The columns to group by in the query.
+
+        Returns
+        -------
+        Select
+            The updated Select query with GROUP BY conditions.
+        """
         assert len(columns) > 0, "group_by condition cannot be empty!"
         assert all(
             [
@@ -106,15 +168,41 @@ class Select(Query):
 
     @validate_call
     def limit(self, _limit: int) -> Select:
+        """Sets a limit on the number of rows returned by the query.
+
+        Parameters
+        ----------
+        _limit : int
+            The maximum number of rows to return.
+
+        Returns
+        -------
+        Select
+            The updated Select query with a limit.
+        """
         assert _limit > 0, "Limit cannot be null nor negative"
         self._limit = _limit
         return self
 
     def distinct(self) -> Select:
+        """Enables the DISTINCT option in the query.
+
+        Returns
+        -------
+        Select
+            The updated Select query with DISTINCT enabled.
+        """
         self._distinct = True
         return self
 
     def build_query(self) -> Tuple[str, List[Any]]:
+        """Builds the SELECT query into a string and its parameters.
+
+        Returns
+        -------
+        Tuple[str, List[Any]]
+            The query string and the corresponding parameters.
+        """
         query = f"SELECT {'DISTINCT' if self.distinct else ''} {self._select} FROM {self._keyspace}.{self._table}"
         parameters = []
         if self._where:
@@ -137,6 +225,13 @@ class Update(Query):
 
     @validate_call
     def __init__(self, table: Type[Table]):
+        """Initializes the Update query.
+
+        Parameters
+        ----------
+        table : Type[Table]
+            The table to be updated.
+        """
         self._table = table
         self._keyspace = table.__keyspace__
         self._where: List[ColumnExpr] = []
@@ -144,11 +239,37 @@ class Update(Query):
 
     @validate_call
     def set(self, column: Column, value: Any) -> Update:
+        """Sets the values to be updated in the query.
+
+        Parameters
+        ----------
+        column : Column
+            The column to update.
+        value : Any
+            The new value for the column.
+
+        Returns
+        -------
+        Update
+            The updated Update query with the new SET values.
+        """
         self._set_values[column] = value
         return self
 
     @validate_call
     def where(self, *predicates: ColumnExpr) -> Update:
+        """Adds WHERE conditions to the update query.
+
+        Parameters
+        ----------
+        *predicates : ColumnExpr
+            The column expressions to be used in the WHERE clause.
+
+        Returns
+        -------
+        Update
+            The updated Update query with WHERE conditions.
+        """
         assert len(predicates) > 0, "where condition cannot be empty!"
         assert all(
             [
@@ -161,6 +282,13 @@ class Update(Query):
         return self
 
     def build_query(self) -> Tuple[str, List[Any]]:
+        """Builds the UPDATE query into a string and its parameters.
+
+        Returns
+        -------
+        Tuple[str, List[Any]]
+            The query string and the corresponding parameters.
+        """
         if not self._set_values:
             raise ValueError("No SET in update query!")
 
@@ -180,21 +308,47 @@ class Update(Query):
 
 
 class Delete(Query):
-    """Update query."""
+    """Delete query."""
 
     @validate_call
     def __init__(self, table: Type[Table]):
+        """Initializes the Delete query.
+
+        Parameters
+        ----------
+        table : Type[Table]
+            The table from which records are to be deleted.
+        """
         self._table = table
         self._keyspace = table.__keyspace__
         self._where: List[ColumnExpr] = []
         self._if_exists: bool = False
 
     def if_exists(self) -> Delete:
+        """Adds the IF EXISTS clause to the query.
+
+        Returns
+        -------
+        Delete
+            The updated Delete query with IF EXISTS enabled.
+        """
         self._if_exists = True
         return self
 
     @validate_call
     def where(self, *predicates: ColumnExpr) -> Delete:
+        """Adds WHERE conditions to the delete query.
+
+        Parameters
+        ----------
+        *predicates : ColumnExpr
+            The column expressions to be used in the WHERE clause.
+
+        Returns
+        -------
+        Delete
+            The updated Delete query with WHERE conditions.
+        """
         assert len(predicates) > 0, "where condition cannot be empty!"
         assert all(
             [
@@ -207,6 +361,13 @@ class Delete(Query):
         return self
 
     def build_query(self) -> Tuple[str, List[Any]]:
+        """Builds the DELETE query into a string and its parameters.
+
+        Returns
+        -------
+        Tuple[str, List[Any]]
+            The query string and the corresponding parameters.
+        """
         query = f"DELETE FROM {self._keyspace}.{self._table.__tablename__}"
         parameters = []
         if self._where:
@@ -228,11 +389,30 @@ class Insert(Query):
 
     @validate_call
     def __init__(self, table: Type[Table]):
+        """Initializes the Insert query.
+
+        Parameters
+        ----------
+        table : Type[Table]
+            The table into which records are to be inserted.
+        """
         self._table = table
         self._keyspace = table.__keyspace__
         self._values: List[Table] = []
 
     @validate_call
     def values(self, *values: Table) -> Insert:
+        """Specifies the values to be inserted.
+
+        Parameters
+        ----------
+        *values : Table
+            The values to be inserted into the table.
+
+        Returns
+        -------
+        Insert
+            The updated Insert query with values.
+        """
         self._values.extend(values)
         return self

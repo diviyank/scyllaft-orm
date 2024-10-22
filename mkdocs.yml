@@ -1,0 +1,55 @@
+site_name: "Scylla Bridge : an ORM for ScyllaFT/ScyllaPy"
+
+theme:
+  name: "material"
+  palette:
+    primary: "orange"
+    accent: "lime"
+    scheme: "slate"
+  features:
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src, .] # search packages in the src folder.
+          options:
+            extension:
+              - griffe_typingdoc
+            docstring_style: numpy
+            heading_level: 3
+            show_root_heading: true
+            show_if_no_docstring: true
+            inherited_members: true
+            separate_signature: true
+            unwrap_annotated: true
+            filters: ["!^_"]
+            merge_init_into_class: true
+            docstring_section_style: table
+            signature_crossrefs: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            docstring_options:
+              ignore_init_summary: false
+              trim_doctest_flags: true
+  - search
+  - glightbox
+
+nav:
+  - Home: index.md
+  - Columns: columns.md
+  - Tables: tables.md
+  - Queries: queries.md
