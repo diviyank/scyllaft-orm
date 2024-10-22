@@ -104,6 +104,7 @@ class Column:
         An alias for the column, by default None.
     """
 
+    type: ScyllaType
     _expr: Optional[ColumnExpr] = None
     _table: Optional[str] = None
     _keyspace: Optional[str] = None
@@ -123,19 +124,9 @@ class Column:
         Column
             The updated column with new attributes.
         """
-        for key, value in settings:
+        for key, value in settings.items():
             setattr(self, key, value)
         return self
-
-    def __init__(self, type: ScyllaType):
-        """Initializes a column with a specific ScyllaDB data type.
-
-        Parameters
-        ----------
-        type : ScyllaType
-            The data type of the column.
-        """
-        self.type = type
 
     def _validate_value(self, value: object) -> None:
         """Validates the provided value for the column.

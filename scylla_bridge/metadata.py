@@ -15,12 +15,13 @@ class MetaData:
     async def create_all(self, scylla: Scylla) -> None:
         """Check if all tables/view if they exist and create them otherwise."""
         all_tables = inspect.getmembers(
-            sys.modules[__name__],
-            lambda x: inspect.isclass(x) and issubclass(x, Table) and x != Table,
+            sys.modules["__main__"],
+            lambda x: inspect.isclass(x) and issubclass(x, Table),
         )
         all_stmt = []
         for _, table in all_tables:
             all_stmt.extend(self._create_table(table))
+        breakpoint()
         for stmt in all_stmt:
             await scylla.execute(stmt)
 

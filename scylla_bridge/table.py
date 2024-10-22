@@ -4,13 +4,17 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import Enum
-from typing import Dict, List, Type
+from typing import Dict, List, Type, Optional
+
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 
 from .column import Column
 from .metaclass import ScyllaMetaClass
 from .types import SCYLLA_TO_REDIS_MAP
 
 
+@dataclass
 class Table(metaclass=ScyllaMetaClass):
     """Base table class for Scylla.
 
@@ -21,9 +25,10 @@ class Table(metaclass=ScyllaMetaClass):
     __tablename__: str
     __index__: List[str]
     __base_level__: str
-    __materialized_views__: Dict[str | Enum, List[str]] = {}
-    _set_attr: bool = False
-    fields: Dict[str, Column]
+    __materialized_views__: Dict[str | Enum, List[str]] = Field(
+        default_factory=lambda: {}
+    )
+    fields: Optional[Dict[str, Column]] = None
 
     @classmethod
     def to_redis_schema(cls: Type[Table]) -> Dict[str, List[str]]:

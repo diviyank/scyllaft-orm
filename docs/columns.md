@@ -13,7 +13,3 @@
 ### AggregateExpr
 
 :::scylla_bridge.column.AggregateExpr
-
-## Types
-
-:::scylla_bridge.types.ScyllaType
