@@ -1,5 +1,7 @@
 # scylla-bridge
 
+Documentation available [here](https://diviyank.github.io/scylla-bridge/)
+
 A simple interface over ScyllaFT or ScyllaPy.
 
 ## Create all tables and views
