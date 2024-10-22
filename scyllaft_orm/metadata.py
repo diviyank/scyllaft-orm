@@ -1,58 +1,50 @@
 """General tooling to create table and views."""
 
-from loguru import logger
+import inspect
+import sys
+from typing import List, Type
+
 from scyllaft import Scylla
 
-
-class SingletonMeta(type):
-    """
-    The Singleton class can be implemented in different ways in Python. Some
-    possible methods include: base class, decorator, metaclass. We will use the
-    metaclass because it is best suited for this purpose.
-    """
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        """
-        Possible changes to the value of the `__init__` argument do not affect
-        the returned instance.
-        """
-        if cls not in cls._instances:
-            instance = super().__call__(*args, **kwargs)
-            cls._instances[cls] = instance
-        return cls._instances[cls]
-
-
-class ApplicationEnvironment(metaclass=SingletonMeta):
-
-    modified: bool = False
-    env: str = "dev"
-
-    def set_environment(self, env: str) -> None:
-        """Set the application env."""
-        self.modified = True
-        self.env = env
-
-    def get_environment(self) -> str:
-        """Get the application env."""
-        if not self.modified:
-            logger.warning(
-                "Using the default environment : {env}, as the application env has not been set",
-                env=self.env,
-            )
-
-        return self.env
+from .table import Table
 
 
 class MetaData:
     """MetaData class to create all views and tables."""
 
-    def create_all(self, scylla: Scylla) -> None:
+    async def create_all(self, scylla: Scylla) -> None:
         """Check if all tables/view if they exist and create them otherwise."""
+        all_tables = inspect.getmembers(
+            sys.modules[__name__],
+            lambda x: inspect.isclass(x) and issubclass(x, Table) and x != Table,
+        )
+        all_stmt = []
+        for _, table in all_tables:
+            all_stmt.extend(self._create_table(table))
+        for stmt in all_stmt:
+            await scylla.execute(stmt)
 
-    def _create_table(self, scylla: Scylla) -> None:
+    def _create_table(self, table: Type[Table]) -> List[str]:
         """Create a table following its definition."""
+        columns = ", ".join([f"{name, col.type}" for name, col in table.fields.items()])
+        index = ", ".join(table.__index__)
+        stmt = [
+            f"CREATE TABLE IF NOT EXISTS {table.__keyspace__}.{table.__tablename__} ({columns} PRIMARY KEY ({index}))"
+        ]
 
-    def _create_view(self, scylla: Scylla) -> None:
+        for key, index_view in table.__materialized_views__.items():
+            stmt.append(
+                self._create_view(
+                    f"{table.__keyspace__}.{table.__tablename__}",
+                    f"{table.__keyspace__}.{table.__tablename__}_{key}",
+                    index_view,
+                )
+            )
+
+        return stmt
+
+    def _create_view(self, base_table: str, name: str, index: List[str]) -> str:
         """Create a CQL Materialized view."""
+        index_ = ", ".join(index)
+        where_clause = " AND ".join([f"{k} IS NOT NULL" for k in index])
+        return f"CREATE MATERIALIZED VIEW IF NOT EXISTS {name} AS SELECT * FROM {base_table} WHERE {where_clause} PRIMARY KEY ({index_})"
