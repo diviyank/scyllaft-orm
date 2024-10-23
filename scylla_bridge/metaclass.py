@@ -60,7 +60,11 @@ class ScyllaMetaClass(type):
         """Init the meta-class."""
         if len(cls.mro()) > 2:
             clsdict = trigger_linking_routine(clsdict)
-        super().__init__(name, bases, clsdict)
+            super().__init__(name, bases, clsdict)
+            setattr(cls, "fields", clsdict["fields"])
+            setattr(cls, "__keyspace__", clsdict["__keyspace__"])
+        else:
+            super().__init__(name, bases, clsdict)
 
 
 def trigger_linking_routine(clsdict: dict) -> dict:

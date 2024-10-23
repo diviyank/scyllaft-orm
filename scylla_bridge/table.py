@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 from enum import Enum
-from typing import Dict, List, Type, Optional
+from typing import Dict, List, Optional, Type
 
-from pydantic import Field
 from pydantic.dataclasses import dataclass
 
 from .column import Column
@@ -21,13 +20,11 @@ class Table(metaclass=ScyllaMetaClass):
     Define attributes in a SQLAlchemy manner
     """
 
-    __keyspace__: str
-    __tablename__: str
-    __index__: List[str]
-    __base_level__: str
-    __materialized_views__: Dict[str | Enum, List[str]] = Field(
-        default_factory=lambda: {}
-    )
+    __keyspace__: str = ""
+    __tablename__: str = ""
+    __index__: Optional[List[str]] = None
+    __base_level__: str = ""
+    __materialized_views__: Optional[Dict[str | Enum, List[str]]] = None
     fields: Optional[Dict[str, Column]] = None
 
     @classmethod

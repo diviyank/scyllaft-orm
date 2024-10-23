@@ -82,6 +82,7 @@ class Select(Query):
             self._columns: List[Column | AggregateExpr] = []
         else:
             self._table: str = columns[0]._table  # type:ignore
+            self._keyspace: str = columns[0]._keyspace  # type:ignore
             assert all(
                 [
                     isinstance(col, (Column, AggregateExpr))
@@ -407,10 +408,10 @@ class Insert(Query):
         """
         self._table = table
         self._keyspace = table.__keyspace__
-        self._values: List[Table] = []
+        self._values: List[dict] = []
 
-    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
-    def values(self, *values: Table) -> Insert:
+    @validate_call()
+    def values(self, *values: dict) -> Insert:
         """Specifies the values to be inserted.
 
         Parameters
@@ -425,3 +426,41 @@ class Insert(Query):
         """
         self._values.extend(values)
         return self
+
+    def build_query(self) -> List[Tuple[str, List[Any]]]:  # type:ignore
+        """Builds the DELETE query into a string and its parameters.
+
+        Returns
+        -------
+        Tuple[str, List[Any]]
+            The query string and the corresponding parameters.
+        """
+        query = f"INSERT INTO {self._keyspace}.{self._table.__tablename__}"
+        queries = []
+        for stmt in self._values:
+            c, v = zip(*stmt.items())
+            queries.append(
+                (f"{query} ({', '.join(c)}) VALUES ({', '.join(['?' for i in c])})", v)
+            )
+        if not queries:
+            raise ValueError("No data to insert!")
+        return queries
+
+    async def execute(self, scylla_instance: Scylla) -> Any:
+        """Executes the query using a Scylla instance.
+
+        Parameters
+        ----------
+        scylla_instance : Scylla
+            The Scylla instance used to execute the query.
+
+        Returns
+        -------
+        Any
+            The result of the executed query.
+        """
+        queries = self.build_query()
+        result = []
+        for query, parameters in list(queries):
+            result.append(await scylla_instance.execute(query, parameters))
+        return result
